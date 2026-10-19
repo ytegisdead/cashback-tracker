@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Мой Кэшбэк Трекер</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .pb-safe {
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+    /* Smooth transitions */
+    .tab-content {
+      transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+    }
+    /* Hide scrollbar for clean horizontal scrolling */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex justify-center items-center sm:p-4">
+
+  <!-- App Container (Mobile viewport shell) -->
+  <div class="w-full max-w-md h-screen sm:h-[92vh] bg-gray-50 flex flex-col shadow-2xl relative sm:rounded-3xl sm:border sm:border-gray-200 overflow-hidden">
+    
+    <!-- Top Header Bar -->
+    <header class="bg-white/90 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 z-20 flex items-center justify-between sticky top-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-md shadow-indigo-200">
+          <i data-lucide="percent" class="w-5 h-5 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold leading-tight text-gray-900">Мой Кэшбэк</h1>
+          <p class="text-[10px] text-gray-400 font-medium">Все карты в одном месте</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center gap-1.5">
+        <button id="btn-settings" onclick="openSettingsModal()" class="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all relative">
+          <i data-lucide="settings" class="w-5 h-5"></i>
+          <span id="api-key-badge" class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-amber-500 hidden"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Dynamic Container -->
+    <main id="main-content" class="flex-1 overflow-y-auto p-4 pb-28">
+      
+      <!-- TAB 1: HOME / DASHBOARD -->
+      <section id="tab-home" class="tab-content space-y-4">
+        <!-- Quick Search / Cashback Calculator -->
+        <div class="bg-white p-3.5 rounded-2xl shadow-sm border border-gray-100 space-y-2">
+          <div class="relative flex items-center">
+            <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3"></i>
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="Где выгодно? (например: Аптеки, Такси)..." 
+              oninput="handleSearch(this.value)"
+              class="w-full pl-9 pr-8 py-2 bg-gray-50 text-sm border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+            />
+            <button id="clear-search" onclick="clearSearch()" class="absolute right-2.5 text-gray-400 hover:text-gray-600 hidden">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
+            </button>
+          </div>
+          
+          <!-- Category Quick Pills -->
+          <div id="quick-pills" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 text-xs text-gray-600">
+            <!-- Dynamic Category Filter Pills will be rendered here -->
+          </div>
+        </div>
+
+        <!-- Cards List Container -->
+        <div id="banks-container" class="space-y-3.5">
+          <!-- Dynamic Bank Cards Rendered Here -->
+        </div>
+      </section>
+
+      <!-- TAB 2: MANUAL ENTRY FORM -->
+      <section id="tab-manual" class="tab-content hidden space-y-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-5">
+          <div class="flex items-center justify-between border-b pb-3 border-gray-100">
+            <h2 id="manual-form-title" class="text-lg font-bold text-gray-800">Добавить банк</h2>
+            <button onclick="switchTab('home')" class="text-gray-400 hover:text-gray-600">
+              <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+          </div>
+
+          <form id="form-manual" onsubmit="saveManualBank(event)" class="space-y-4">
+            <input type="hidden" id="edit-bank-id" value="" />
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-600 mb-1.5">Название банка</label>
+              <input 
+                type="text" 
+                id="input-bank-name" 
+                required 
+                placeholder="Например: Т-Банк, Альфа-Банк, Сбер..." 
+                class="w-full px-3.5 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+
+            <!-- Categories List -->
+            <div>
+              <div class="flex justify-between items-center mb-2">
+                <label class="text-xs font-semibold text-gray-600">Категории и кэшбэк</label>
+                <button type="button" onclick="addCategoryRow()" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i> Добавить
+                </button>
+              </div>
+
+              <div id="manual-categories-container" class="space-y-2.5">
+                <!-- Dynamic Category Rows -->
+              </div>
+            </div>
+
+            <div class="pt-2 flex gap-2.5">
+              <button 
+                type="button" 
+                onclick="switchTab('home')" 
+                class="flex-1 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all"
+              >
+                Отмена
+              </button>
+              <button 
+                type="submit" 
+                class="flex-1 py-2.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-200 rounded-xl transition-all"
+              >
+                Сохранить
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- TAB 3: AI SCREENSHOT SCANNER -->
+      <section id="tab-scan" class="tab-content hidden space-y-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 space-y-4 text-center">
+          <div>
+            <h2 class="text-lg font-bold text-gray-800">ИИ Сканер Скриншотов</h2>
+            <p class="text-xs text-gray-500 mt-0.5">Загрузите скриншот категорий из любого банка, нейросеть сама распарсит всё за секунду.</p>
+          </div>
+
+          <!-- Hidden File Input -->
+          <input type="file" id="scanner-file-input" accept="image/*" class="hidden" onchange="handleImageSelected(event)" />
+
+          <!-- Upload Dropzone -->
+          <div 
+            id="dropzone"
+            onclick="document.getElementById('scanner-file-input').click()"
+            class="border-2 border-dashed border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50/90 rounded-2xl p-6 transition-all cursor-pointer flex flex-col items-center justify-center gap-2 group"
+          >
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+              <i data-lucide="image-plus" class="w-6 h-6"></i>
+            </div>
+            <div class="text-xs font-semibold text-indigo-700">Нажмите, чтобы выбрать скриншот</div>
+            <p class="text-[11px] text-gray-400">Поддерживаются PNG, JPG, WEBP</p>
+          </div>
+
+          <!-- Image Preview & Loading Indicator -->
+          <div id="scanner-preview-card" class="hidden relative rounded-2xl overflow-hidden border border-gray-200 bg-slate-900 min-h-[160px] flex items-center justify-center">
+            <img id="scanner-img-preview" src="" alt="Скриншот" class="max-h-56 object-contain w-full opacity-80" />
+            
+            <div id="scanner-loading" class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex flex-col items-center justify-center text-white p-4">
+              <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-indigo-400 mb-2"></i>
+              <p class="text-xs font-semibold animate-pulse">Анализируем картинку...</p>
+              <p class="text-[10px] text-slate-400 mt-1">Определяем банк и проценты</p>
+            </div>
+          </div>
+
+          <!-- Error Alert Banner -->
+          <div id="scanner-error" class="hidden p-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs text-left flex items-start gap-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <span id="scanner-error-text">Ошибка сканирования</span>
+          </div>
+
+          <!-- Scan Result Preview Form -->
+          <div id="scanner-result" class="hidden text-left bg-emerald-50/60 border border-emerald-200 p-4 rounded-2xl space-y-3">
+            <div class="flex items-center gap-2 text-emerald-700 font-bold text-sm">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              <span>Успешно распознано!</span>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-gray-500 mb-1">Банк</label>
+              <input type="text" id="scan-bank-name" class="w-full px-3 py-1.5 text-sm bg-white border border-emerald-300 rounded-lg font-bold text-gray-800" />
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-gray-500 mb-1">Распознанные категории</label>
+              <div id="scan-categories-list" class="space-y-1.5">
+                <!-- Parsed rows rendered here -->
+              </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button 
+                onclick="resetScanner()" 
+                class="flex-1 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-200 rounded-xl"
+              >
+                Отмена
+              </button>
+              <button 
+                onclick="confirmScanResult()" 
+                class="flex-1 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-200 rounded-xl"
+              >
+                Добавить в список
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bg-white border-t border-gray-200 flex items-center justify-around px-4 py-2 z-20 pb-safe">
+      <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center gap-1 text-indigo-600 p-1.5 w-16 transition-all">
+        <i data-lucide="layout-grid" class="w-5 h-5"></i>
+        <span class="text-[10px] font-medium">Все карт</span>
+      </button>
+
+      <!-- Center Floating Camera Button -->
+      <div class="relative -top-4">
+        <button 
+          onclick="switchTab('scan')" 
+          id="nav-scan"
+          class="w-13 h-13 bg-indigo-600 text-white p-3.5 rounded-full shadow-lg shadow-indigo-300 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center border-4 border-gray-50"
+        >
+          <i data-lucide="camera" class="w-6 h-6"></i>
+        </button>
+      </div>
+
+      <button onclick="switchTab('manual')" id="nav-manual" class="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 p-1.5 w-16 transition-all">
+        <i data-lucide="plus-circle" class="w-5 h-5"></i>
+        <span class="text-[10px] font-medium">Вручную</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div id="modal-settings" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-5 shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="modal-settings-card">
+      <div class="flex justify-between items-center border-b pb-3 border-gray-100">
+        <h3 class="font-bold text-gray-800 text-base flex items-center gap-2">
+          <i data-lucide="key" class="w-4 h-4 text-indigo-600"></i>
+          Настройки ИИ и данных
+        </h3>
+        <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-gray-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Gemini API Key Section -->
+      <div class="space-y-2">
+        <label class="block text-xs font-semibold text-gray-700">
+          Google AI Studio API Key (для сканера)
+        </label>
+        <p class="text-[11px] text-gray-500 leading-relaxed">
+          Чтобы сканер работал автономно в отдельном файле, укажите ваш бесплатный ключ Gemini API.
+        </p>
+        <div class="relative">
+          <input 
+            type="password" 
+            id="input-api-key" 
+            placeholder="AIzaSy..." 
+            class="w-full pl-3 pr-8 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+          />
+          <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600">
+            <i data-lucide="eye" id="icon-eye" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <a 
+          href="https://aistudio.google.com/app/apikey" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          class="inline-flex items-center gap-1 text-[11px] text-indigo-600 font-medium hover:underline"
+        >
+          <i data-lucide="external-link" class="w-3 h-3"></i> Получить бесплатный API ключ
+        </a>
+      </div>
+
+      <!-- Backup / Restore -->
+      <div class="border-t pt-3 border-gray-100 space-y-2">
+        <label class="block text-xs font-semibold text-gray-700">Резервное копирование</label>
+        <div class="flex gap-2">
+          <button onclick="exportData()" class="flex-1 py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i> Экспорт (JSON)
+          </button>
+          <button onclick="document.getElementById('import-file-input').click()" class="flex-1 py-1.5 px-3 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5">
+            <i data-lucide="upload" class="w-3.5 h-3.5"></i> Импорт
+          </button>
+          <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importData(event)" />
+        </div>
+      </div>
+
+      <!-- Reset Data -->
+      <div class="border-t pt-3 border-gray-100">
+        <button onclick="resetToSampleData()" class="w-full py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-semibold rounded-xl transition-all">
+          Сбросить до демо-данных
+        </button>
+      </div>
+
+      <div class="pt-2">
+        <button onclick="saveSettings()" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl shadow-md shadow-indigo-200">
+          Сохранить настройки
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    
+    // Initial Default Data
+    const INITIAL_BANKS = [
+      {
+        id: '1',
+        bankName: 'Т-Банк',
+        color: 'bg-yellow-400',
+        textColor: 'text-black',
+        categories: [
+          { name: 'Супермаркеты', percent: 5 },
+          { name: 'Аптеки', percent: 5 },
+          { name: 'Все покупки', percent: 1 }
+        ]
+      },
+      {
+        id: '2',
+        bankName: 'Альфа-Банк',
+        color: 'bg-red-500',
+        textColor: 'text-white',
+        categories: [
+          { name: 'Фастфуд', percent: 10 },
+          { name: 'Такси', percent: 5 },
+          { name: 'Кафе и рестораны', percent: 7 }
+        ]
+      },
+      {
+        id: '3',
+        bankName: 'Яндекс Банк',
+        color: 'bg-amber-400',
+        textColor: 'text-black',
+        categories: [
+          { name: 'Яндекс Go / Такси', percent: 10 },
+          { name: 'Маркет', percent: 5 }
+        ]
+      }
+    ];
+
+    const BANK_STYLES = {
+      'т-банк': { bg: 'bg-yellow-400', text: 'text-black', border: 'border-yellow-200' },
+      'тинькофф': { bg: 'bg-yellow-400', text: 'text-black', border: 'border-yellow-200' },
+      'альфа': { bg: 'bg-red-500', text: 'text-white', border: 'border-red-200' },
+      'сбер': { bg: 'bg-emerald-600', text: 'text-white', border: 'border-emerald-200' },
+      'втб': { bg: 'bg-blue-600', text: 'text-white', border: 'border-blue-200' },
+      'озон': { bg: 'bg-sky-500', text: 'text-white', border: 'border-sky-200' },
+      'яндекс': { bg: 'bg-amber-400', text: 'text-black', border: 'border-amber-200' },
+      'райффайзен': { bg: 'bg-yellow-300', text: 'text-black', border: 'border-yellow-200' },
+      'совкомбанк': { bg: 'bg-blue-700', text: 'text-white', border: 'border-blue-200' },
+      'халва': { bg: 'bg-blue-700', text: 'text-white', border: 'border-blue-200' },
+      'default': { bg: 'bg-slate-800', text: 'text-white', border: 'border-slate-200' }
+    };
+
+    function getBankStyle(name) {
+      const lower = name.toLowerCase();
+      const matchedKey = Object.keys(BANK_STYLES).find(k => lower.includes(k));
+      return matchedKey ? BANK_STYLES[matchedKey] : BANK_STYLES['default'];
+    }
+
+    // App State Variables
+    let banksData = [];
+    let activeTab = 'home';
+    let searchQuery = '';
+    let apiKey = '';
+
+    function initApp() {
+      // Load saved state
+      const savedBanks = localStorage.getItem('cashback_banks_data');
+      if (savedBanks) {
+        try {
+          banksData = JSON.parse(savedBanks);
+        } catch (e) {
+          banksData = INITIAL_BANKS;
+        }
+      } else {
+        banksData = INITIAL_BANKS;
+      }
+
+      apiKey = localStorage.getItem('gemini_api_key') || '';
+      updateApiKeyBadge();
+
+      renderDashboard();
+      lucide.createIcons();
+    }
+
+    function saveState() {
+      localStorage.setItem('cashback_banks_data', JSON.stringify(banksData));
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      
+      // Update Tab Visibility
+      ['home', 'manual', 'scan'].forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (t === tab) {
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
+      });
+
+      // Update Nav Buttons
+      const navHome = document.getElementById('nav-home');
+      const navManual = document.getElementById('nav-manual');
+      
+      navHome.className = `flex flex-col items-center gap-1 p-1.5 w-16 transition-all ${tab === 'home' ? 'text-indigo-600 font-semibold' : 'text-gray-400 hover:text-gray-600'}`;
+      navManual.className = `flex flex-col items-center gap-1 p-1.5 w-16 transition-all ${tab === 'manual' ? 'text-indigo-600 font-semibold' : 'text-gray-400 hover:text-gray-600'}`;
+
+      if (tab === 'manual' && document.getElementById('manual-categories-container').children.length === 0) {
+        resetManualForm();
+      }
+
+      lucide.createIcons();
+    }
+
+    function handleSearch(val) {
+      searchQuery = val.trim().toLowerCase();
+      document.getElementById('clear-search').classList.toggle('hidden', searchQuery === '');
+      renderDashboard();
+    }
+
+    function clearSearch() {
+      document.getElementById('search-input').value = '';
+      searchQuery = '';
+      document.getElementById('clear-search').classList.add('hidden');
+      renderDashboard();
+    }
+
+    function renderQuickPills() {
+      const container = document.getElementById('quick-pills');
+      
+      // Collect all unique category names
+      const categoriesSet = new Set();
+      banksData.forEach(b => {
+        b.categories.forEach(c => categoriesSet.add(c.name));
+      });
+
+      const uniqueCategories = Array.from(categoriesSet).slice(0, 8);
+
+      if (uniqueCategories.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = uniqueCategories.map(cat => `
+        <button 
+          onclick="filterByPill('${cat}')" 
+          class="px-2.5 py-1 rounded-lg text-[11px] font-medium whitespace-nowrap transition-all border ${
+            searchQuery.toLowerCase() === cat.toLowerCase() 
+              ? 'bg-indigo-600 text-white border-indigo-600' 
+              : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+          }"
+        >
+          ${cat}
+        </button>
+      `).join('');
+    }
+
+    function filterByPill(cat) {
+      if (searchQuery.toLowerCase() === cat.toLowerCase()) {
+        clearSearch();
+      } else {
+        document.getElementById('search-input').value = cat;
+        handleSearch(cat);
+      }
+    }
+
+    function renderDashboard() {
+      renderQuickPills();
+      const container = document.getElementById('banks-container');
+
+      if (banksData.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 px-4 bg-white rounded-2xl border border-gray-100">
+            <div class="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3">
+              <i data-lucide="credit-card" class="w-6 h-6"></i>
+            </div>
+            <p class="font-bold text-gray-700 text-sm">У вас пока нет карт</p>
+            <p class="text-xs text-gray-400 mt-1">Добавьте банковскую карту вручную или отсканируйте скриншот.</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      // Filter and Sort banks based on search
+      let renderedCount = 0;
+      let html = '';
+
+      banksData.forEach(bank => {
+        const style = getBankStyle(bank.bankName);
+
+        // Check search filter matching
+        let matchingCategories = bank.categories;
+        let isBankNameMatched = bank.bankName.toLowerCase().includes(searchQuery);
+
+        if (searchQuery) {
+          matchingCategories = bank.categories.filter(c => 
+            c.name.toLowerCase().includes(searchQuery)
+          );
+        }
+
+        if (searchQuery && !isBankNameMatched && matchingCategories.length === 0) {
+          return; // Skip if no match
+        }
+
+        renderedCount++;
+
+        html += `
+          <div class="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 relative overflow-hidden transition-all hover:shadow-md">
+            <div class="flex justify-between items-center mb-3">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full ${style.bg} ring-2 ring-gray-100"></span>
+                <h3 class="font-bold text-gray-800 text-sm">${bank.bankName}</h3>
+              </div>
+              
+              <div class="flex items-center gap-1">
+                <button onclick="editBank('${bank.id}')" class="p-1.5 text-gray-300 hover:text-indigo-600 rounded-lg transition-colors">
+                  <i data-lucide="edit-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteBank('${bank.id}')" class="p-1.5 text-gray-300 hover:text-rose-600 rounded-lg transition-colors">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5">
+              ${(searchQuery && !isBankNameMatched ? matchingCategories : bank.categories).map(cat => `
+                <div class="bg-gray-50 border border-gray-100 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-2 text-xs">
+                  <span class="text-gray-700 font-medium">${cat.name}</span>
+                  <span class="font-bold px-1.5 py-0.5 rounded-md ${style.bg} ${style.text} text-[11px]">
+                    ${cat.percent}%
+                  </span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      if (renderedCount === 0 && searchQuery) {
+        container.innerHTML = `
+          <div class="text-center py-8 bg-white rounded-2xl border border-gray-100">
+            <p class="text-xs text-gray-500">Ничего не найдено по запросу «<span class="font-semibold text-gray-700">${searchQuery}</span>»</p>
+            <button onclick="clearSearch()" class="mt-2 text-xs text-indigo-600 font-semibold hover:underline">Сбросить поиск</button>
+          </div>
+        `;
+      } else {
+        container.innerHTML = html;
+      }
+
+      lucide.createIcons();
+    }
+
+    function deleteBank(id) {
+      banksData = banksData.filter(b => b.id !== id);
+      saveState();
+      renderDashboard();
+    }
+
+    // Manual Form Helpers
+    function resetManualForm() {
+      document.getElementById('manual-form-title').innerText = 'Добавить банк';
+      document.getElementById('edit-bank-id').value = '';
+      document.getElementById('input-bank-name').value = '';
+      
+      const container = document.getElementById('manual-categories-container');
+      container.innerHTML = '';
+      
+      // Default 2 empty rows
+      addCategoryRow();
+      addCategoryRow();
+    }
+
+    function addCategoryRow(name = '', percent = '') {
+      const container = document.getElementById('manual-categories-container');
+      const rowId = 'cat-row-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4);
+
+      const div = document.createElement('div');
+      div.id = rowId;
+      div.className = 'flex items-center gap-2';
+      div.innerHTML = `
+        <input 
+          type="text" 
+          placeholder="Название (например: Аптеки)" 
+          value="${name}" 
+          required 
+          class="cat-name flex-1 px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" 
+        />
+        <input 
+          type="number" 
+          placeholder="%" 
+          value="${percent}" 
+          required 
+          min="0"
+          max="100"
+          class="cat-percent w-16 px-2 py-2 text-xs text-center bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-bold" 
+        />
+        <button type="button" onclick="document.getElementById('${rowId}').remove()" class="p-2 text-gray-300 hover:text-rose-500 rounded-lg">
+          <i data-lucide="minus-circle" class="w-4 h-4"></i>
+        </button>
+      `;
+
+      container.appendChild(div);
+      lucide.createIcons();
+    }
+
+    function editBank(id) {
+      const bank = banksData.find(b => b.id === id);
+      if (!bank) return;
+
+      switchTab('manual');
+      document.getElementById('manual-form-title').innerText = 'Редактировать банк';
+      document.getElementById('edit-bank-id').value = bank.id;
+      document.getElementById('input-bank-name').value = bank.bankName;
+
+      const container = document.getElementById('manual-categories-container');
+      container.innerHTML = '';
+
+      bank.categories.forEach(cat => {
+        addCategoryRow(cat.name, cat.percent);
+      });
+    }
+
+    function saveManualBank(e) {
+      e.preventDefault();
+      const editId = document.getElementById('edit-bank-id').value;
+      const bankName = document.getElementById('input-bank-name').value.trim();
+
+      const nameInputs = document.querySelectorAll('.cat-name');
+      const percentInputs = document.querySelectorAll('.cat-percent');
+
+      const categories = [];
+      nameInputs.forEach((input, index) => {
+        const catName = input.value.trim();
+        const catPercent = Number(percentInputs[index].value);
+        if (catName && !isNaN(catPercent)) {
+          categories.push({ name: catName, percent: catPercent });
+        }
+      });
+
+      if (categories.length === 0) return;
+
+      if (editId) {
+        // Update existing
+        const index = banksData.findIndex(b => b.id === editId);
+        if (index !== -1) {
+          banksData[index].bankName = bankName;
+          banksData[index].categories = categories;
+        }
+      } else {
+        // Add new or update by matching bank name
+        const existingIdx = banksData.findIndex(b => b.bankName.toLowerCase() === bankName.toLowerCase());
+        if (existingIdx !== -1) {
+          banksData[existingIdx].categories = categories;
+        } else {
+          banksData.push({
+            id: Date.now().toString(),
+            bankName: bankName,
+            categories: categories
+          });
+        }
+      }
+
+      saveState();
+      switchTab('home');
+    }
+
+    let currentImageBase64 = null;
+    let currentImageMime = 'image/png';
+    let parsedScanData = null;
+
+    function handleImageSelected(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const dataUrl = e.target.result;
+        currentImageMime = file.type || 'image/png';
+        currentImageBase64 = dataUrl.split(',')[1];
+
+        // UI Updates
+        document.getElementById('dropzone').classList.add('hidden');
+        document.getElementById('scanner-preview-card').classList.remove('hidden');
+        document.getElementById('scanner-img-preview').src = dataUrl;
+        document.getElementById('scanner-loading').classList.remove('hidden');
+        document.getElementById('scanner-error').classList.add('hidden');
+        document.getElementById('scanner-result').classList.add('hidden');
+
+        processImageWithAI();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function processImageWithAI() {
+      try {
+        const keyToUse = apiKey || '';
+
+        const systemPrompt = `
+          Ты - интеллектуальный распознаватель банковских скриншотов с информацией о кэшбэке.
+          Твоя задача - определить название банка (например: Т-Банк, Альфа-Банк, Сбербанк, ВТБ, Озон Банк, Яндекс Банк) и список категорий кэшбэка с их процентами.
+          Верни ответ СТРОГО в формате JSON без каких-либо вводных слов или маркдауна.
+          Схема JSON:
+          {
+            "bankName": "Название Банка",
+            "categories": [
+              { "name": "Название категории", "percent": 5 }
+            ]
+          }
+        `;
+
+        const payload = {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: systemPrompt },
+                { inlineData: { mimeType: currentImageMime, data: currentImageBase64 } }
+              ]
+            }
+          ]
+        };
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${keyToUse}`;
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          if (response.status === 400 || response.status === 403) {
+            throw new Error("Неверный API ключ или ключ отсутствует. Укажите ключ в настройках (иконка шестеренки сверху).");
+          }
+          throw new Error(`Ошибка сервера API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!rawText) throw new Error("Не удалось извлечь текст из ответа ИИ");
+
+        // Clean JSON from codeblocks
+        const cleanedJson = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+        parsedScanData = JSON.parse(cleanedJson);
+
+        if (!parsedScanData.bankName || !Array.isArray(parsedScanData.categories)) {
+          throw new Error("Структура ответа от нейросети некорректна.");
+        }
+
+        renderScanResults(parsedScanData);
+
+      } catch (err) {
+        console.error("Scan Error:", err);
+        document.getElementById('scanner-loading').classList.add('hidden');
+        document.getElementById('scanner-error-text').innerText = err.message || "Не удалось распознать скриншот.";
+        document.getElementById('scanner-error').classList.remove('hidden');
+      }
+    }
+
+    function renderScanResults(data) {
+      document.getElementById('scanner-loading').classList.add('hidden');
+      document.getElementById('scanner-result').classList.remove('hidden');
+
+      document.getElementById('scan-bank-name').value = data.bankName || 'Неизвестный Банк';
+
+      const listContainer = document.getElementById('scan-categories-list');
+      listContainer.innerHTML = data.categories.map((c, i) => `
+        <div class="flex items-center gap-2 bg-white p-2 rounded-xl border border-emerald-200">
+          <input type="text" value="${c.name}" class="scan-cat-name flex-1 text-xs font-semibold text-gray-700 outline-none" />
+          <input type="number" value="${c.percent}" class="scan-cat-percent w-12 text-xs font-bold text-center text-emerald-700 bg-emerald-50 rounded-lg py-1 outline-none" />
+          <span class="text-xs font-bold text-emerald-700">%</span>
+        </div>
+      `).join('');
+    }
+
+    function confirmScanResult() {
+      const bankName = document.getElementById('scan-bank-name').value.trim();
+      const names = document.querySelectorAll('.scan-cat-name');
+      const percents = document.querySelectorAll('.scan-cat-percent');
+
+      const categories = [];
+      names.forEach((el, idx) => {
+        const name = el.value.trim();
+        const percent = Number(percents[idx].value);
+        if (name && !isNaN(percent)) {
+          categories.push({ name, percent });
+        }
+      });
+
+      if (!bankName || categories.length === 0) return;
+
+      const existingIdx = banksData.findIndex(b => b.bankName.toLowerCase() === bankName.toLowerCase());
+      if (existingIdx !== -1) {
+        banksData[existingIdx].categories = categories;
+      } else {
+        banksData.push({
+          id: Date.now().toString(),
+          bankName: bankName,
+          categories: categories
+        });
+      }
+
+      saveState();
+      resetScanner();
+      switchTab('home');
+    }
+
+    function resetScanner() {
+      currentImageBase64 = null;
+      parsedScanData = null;
+      document.getElementById('scanner-file-input').value = '';
+      document.getElementById('dropzone').classList.remove('hidden');
+      document.getElementById('scanner-preview-card').classList.add('hidden');
+      document.getElementById('scanner-error').classList.add('hidden');
+      document.getElementById('scanner-result').classList.add('hidden');
+    }
+
+    // Settings Modal Handlers
+    function openSettingsModal() {
+      document.getElementById('input-api-key').value = apiKey;
+      const modal = document.getElementById('modal-settings');
+      const card = document.getElementById('modal-settings-card');
+      
+      modal.classList.remove('pointer-events-none', 'opacity-0');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeSettingsModal() {
+      const modal = document.getElementById('modal-settings');
+      const card = document.getElementById('modal-settings-card');
+
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('input-api-key');
+      const icon = document.getElementById('icon-eye');
+      if (input.type === 'password') {
+        input.type = 'text';
+      } else {
+        input.type = 'password';
+      }
+    }
+
+    function saveSettings() {
+      apiKey = document.getElementById('input-api-key').value.trim();
+      localStorage.setItem('gemini_api_key', apiKey);
+      updateApiKeyBadge();
+      closeSettingsModal();
+    }
+
+    function updateApiKeyBadge() {
+      const badge = document.getElementById('api-key-badge');
+      if (!apiKey) {
+        badge.classList.remove('hidden');
+      } else {
+        badge.classList.add('hidden');
+      }
+    }
+
+    function exportData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(banksData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `cashback_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (Array.isArray(imported)) {
+            banksData = imported;
+            saveState();
+            renderDashboard();
+            closeSettingsModal();
+          } else {
+            alert("Неверный формат файла Бэкапа");
+          }
+        } catch (err) {
+          alert("Ошибка чтения JSON файла");
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function resetToSampleData() {
+      banksData = INITIAL_BANKS;
+      saveState();
+      renderDashboard();
+      closeSettingsModal();
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initApp();
+    });
+  </script>
+</body>
+</html>
