@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="h-full w-full overflow-hidden">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -42,10 +42,10 @@
     }
   </style>
 </head>
-<body class="bg-gray-50 sm:bg-slate-100 text-slate-800 antialiased min-h-screen flex justify-center items-center sm:p-4 overflow-hidden">
+<body class="bg-gray-50 sm:bg-slate-100 text-slate-800 antialiased h-full w-full overflow-hidden fixed inset-0 flex justify-center items-center sm:p-4">
 
   <!-- App Container (Mobile viewport shell) -->
-  <div class="w-full max-w-md h-[100dvh] h-screen sm:h-[92vh] bg-gray-50 flex flex-col shadow-none sm:shadow-2xl relative sm:rounded-3xl sm:border sm:border-gray-200 overflow-hidden">
+  <div class="w-full max-w-md h-full sm:h-[92vh] bg-gray-50 flex flex-col shadow-none sm:shadow-2xl relative sm:rounded-3xl sm:border sm:border-gray-200 overflow-hidden">
     
     <!-- Top Header Bar (Auto-hiding on scroll) -->
     <header id="top-header" class="absolute top-0 left-0 right-0 bg-white/95 backdrop-blur-md px-5 py-3.5 border-b border-gray-100 z-30 flex items-center justify-between transition-transform duration-300 ease-in-out">
@@ -68,7 +68,7 @@
     </header>
 
     <!-- Main Content Dynamic Container -->
-    <main id="main-content" class="flex-1 overflow-y-auto p-4 pt-20 pb-24">
+    <main id="main-content" class="flex-1 min-h-0 overflow-y-auto p-4 pt-20 pb-24">
       
       <!-- TAB 1: HOME / DASHBOARD -->
       <section id="tab-home" class="tab-content space-y-4">
@@ -238,7 +238,7 @@
     </main>
 
     <!-- Bottom Navigation Bar (Fixed at bottom) -->
-    <nav class="mt-auto bg-white border-t border-gray-200 flex items-center justify-around px-4 pt-2 pb-3.5 z-30 shrink-0">
+    <nav class="absolute bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around px-4 pt-2 pb-3.5 z-30">
       <button onclick="switchTab('home')" id="nav-home" class="flex flex-col items-center gap-1 text-indigo-600 p-1 w-16 transition-all">
         <i data-lucide="layout-grid" class="w-5 h-5"></i>
         <span class="text-[10px] font-medium leading-none">Все карты</span>
